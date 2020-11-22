@@ -88,6 +88,7 @@ public class Bot extends TelegramLongPollingBot {
     }
     
     public String getWeather(String city) {
+        System.out.println("ds");
         OpenWeatherMapManager openWeatherMapManager = new OpenWeatherMapManager("1946b0c3abfe50a3352de413456b55fd");
         WeatherRequester weatherRequester = openWeatherMapManager.getWeatherRequester();
         return weatherRequester
@@ -95,6 +96,7 @@ public class Bot extends TelegramLongPollingBot {
         .setUnitSystem(Unit.METRIC_SYSTEM)
         .setAccuracy(Accuracy.ACCURATE)
         .getByCityName(city).toString();
+        
     }
     
     public void setLocation() {
@@ -141,6 +143,7 @@ public class Bot extends TelegramLongPollingBot {
         sendMessage.setChatId(message.getChatId());
         sendMessage.setReplyToMessageId(message.getMessageId());
         sendMessage.setText(text);
+       
         
         try {
             setKeyboardSubscribe(sendMessage);
