@@ -1,17 +1,13 @@
 package telegramweatherbot;
 
-import com.github.prominence.openweathermap.api.OpenWeatherMapManager;
-import com.github.prominence.openweathermap.api.WeatherRequester;
-import com.github.prominence.openweathermap.api.constants.Accuracy;
-import com.github.prominence.openweathermap.api.constants.Language;
-import com.github.prominence.openweathermap.api.constants.Unit;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.function.Function;
 import org.telegram.telegrambots.ApiContextInitializer;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.TelegramBotsApi;
@@ -23,21 +19,28 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.Keyboard
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiRequestException;
+import telegramweatherbot.parsers.Case;
+import telegramweatherbot.parsers.CurrentWeather;
+import telegramweatherbot.parsers.HourlyForecast3Days;
+import telegramweatherbot.parsers.HourlyForecastWeek;
 
-/**
- *
- * @author Serg
- */
 public class Bot extends TelegramLongPollingBot {
+
+    public HashMap<String, String> buttonIcons;
+
+    private static final String API_KEY = "1946b0c3abfe50a3352de413456b55fd";
     HashMap<String, String> subscribes;
+    HashSet<String> broadcast;
     Calendar c1;
     Calendar c2;
     Timer timer;
+    boolean takeCity = false;
     boolean isChangeSettings = false;
-    
+    Function<String, String> getForecast;
+
     public static void main(String[] args) {
         ApiContextInitializer.init();
-        
+
         TelegramBotsApi telegramBotsApi = new TelegramBotsApi();
         try {
             Bot bot = new Bot();
@@ -45,39 +48,53 @@ public class Bot extends TelegramLongPollingBot {
             telegramBotsApi.registerBot(bot);
             bot.sendOn20();
             bot.sendOn9();
-            
+
         } catch (TelegramApiRequestException e) {
-            e.printStackTrace();
         }
-        
+
     }
-    
+
     public void sendOn9() {
         timer.schedule(new TimerTask() {
             @Override
             public void run() {
-                broadcast();
+                    broadcast();
             }
-        },c1.getTime(), 30000);
+        }, c1.getTime(), 30000);
     }
-    
+
     public void sendOn20() {
         timer.schedule(new TimerTask() {
-        @Override
-        public void run() {
-            broadcast();
+            @Override
+            public void run() {
+                    broadcast();
             }
         }, c2.getTime(), 86400000);
     }
 
     public void initBot() {
+        buttonIcons = new HashMap<>() {
+            {
+                put("settings", "⚙");
+                put("subscribe", "📥");
+                put("unsubsribe", "📤");
+                put("cancel", "❌");
+                put("night", "");
+                put("city", "🏙");
+                put("broadcast", "📨");
+                put("current", "📋");
+                put("3days", "🌅");
+                put("week", "📅");
+            }
+        };
         subscribes = new HashMap<>();
-        
+        broadcast = new HashSet<>();
+
         //ВЫНЕСТИ В ОТДЕЛЬНЫЙ ПОТОК
         c1 = Calendar.getInstance();
         c2 = Calendar.getInstance();
         timer = new Timer();
-        
+
         c1.set(Calendar.HOUR_OF_DAY, 0);
         c1.set(Calendar.MINUTE, 44);
         c1.set(Calendar.SECOND, 00);
@@ -86,28 +103,27 @@ public class Bot extends TelegramLongPollingBot {
         c2.set(Calendar.MINUTE, 00);
         c1.set(Calendar.SECOND, 00);
     }
-    
-    public String getWeather(String city) {
-        System.out.println("ds");
-        OpenWeatherMapManager openWeatherMapManager = new OpenWeatherMapManager("1946b0c3abfe50a3352de413456b55fd");
-        WeatherRequester weatherRequester = openWeatherMapManager.getWeatherRequester();
-        return weatherRequester
-        .setLanguage(Language.RUSSIAN)
-        .setUnitSystem(Unit.METRIC_SYSTEM)
-        .setAccuracy(Accuracy.ACCURATE)
-        .getByCityName(city).toString();
-        
+
+    public String getWeatherWeek(String city) {
+        return new HourlyForecastWeek(Case.toTitle(city), API_KEY).get();
     }
-    
+
+    public String getWeather3Days(String city) {
+        return new HourlyForecast3Days(Case.toTitle(city), API_KEY).get();
+    }
+
+    public String getWeatherCurrent(String city) {
+        return new CurrentWeather(Case.toTitle(city), API_KEY).get();
+    }
+
     public void setLocation() {
-        
     }
-    
+
     @Override
     public String getBotToken() {
         return "1473191847:AAHgGFs1F9IPKPEJxJAfd0VQwZ0Ne9Rn9nk";
     }
-    
+
     public void sendMsg(String chatId, String text) {
         SendMessage sendMessage = new SendMessage();
         sendMessage.setChatId(chatId);
@@ -115,41 +131,43 @@ public class Bot extends TelegramLongPollingBot {
         try {
             execute(sendMessage);
         } catch (TelegramApiException e) {
-            e.printStackTrace();
         }
     }
-    
+
     public void sendSettings(Message message, String text) {
         SendMessage sendMessage = new SendMessage();
         sendMessage.enableMarkdown(true);
         sendMessage.setChatId(message.getChatId());
         sendMessage.setReplyToMessageId(message.getMessageId());
         sendMessage.setText(text);
-        
+
         try {
             setSettingsKeyboard(sendMessage);
             execute(sendMessage);
         } catch (TelegramApiException e) {
-            e.printStackTrace();
         }
-        
-        
-        
     }
-    
+
     public void sendMsg(Message message, String text) {
         SendMessage sendMessage = new SendMessage();
         sendMessage.enableMarkdown(true);
         sendMessage.setChatId(message.getChatId());
         sendMessage.setReplyToMessageId(message.getMessageId());
         sendMessage.setText(text);
-       
-        
+
         try {
-            setKeyboardSubscribe(sendMessage);
+            setKeyboard(sendMessage);
             execute(sendMessage);
         } catch (TelegramApiException e) {
-            e.printStackTrace();
+        }
+    }
+
+    private void setForecast(Message message, String chatId, Function<String, String> forecast) {
+        if (!subscribes.containsKey(chatId)) {
+            sendMsg(message, "Укажите город.");
+            getForecast = forecast;
+        } else {
+            sendMsg(message, forecast.apply(subscribes.get(chatId)));
         }
     }
 
@@ -158,107 +176,198 @@ public class Bot extends TelegramLongPollingBot {
         Message message = update.getMessage();
         if (message != null && message.hasText()) {
             String text = message.getText();
-            System.out.println(text);
-            
             String chatId = message.getChatId().toString();
+            text = text.replaceAll("[^\\p{L}\\p{N}\\p{P}\\p{Z}]", "").toLowerCase().strip();
             switch (text) {
                 case "/help":
                     sendMsg(message, "Чем могу помочь?");
                     break;
                 case "/settings":
-                    sendSettings(message, "Что будем настраивать?");
+                case "настройки":
+                    if (subscribes.containsKey(chatId)) {
+                        sendSettings(message, "Что будем настраивать?");
+                        isChangeSettings = true;
+                    } else {
+                        sendMsg(message, "Вы не подписаны.");
+                    }
                     break;
-                case "Сменить город":
-                    isChangeSettings = true;
-                    sendMsg(message, "Укажите город.");
+                case "сменить город":
+                    if (subscribes.containsKey(chatId)) {
+                        sendMsg(message, "Укажите город.");
+                        isChangeSettings = true;
+                    }
+                    else {
+                        sendMsg(message, "Вы не подписаны!");
+                    }
                     break;
                 case "/start":
-                    sendMsg(message, "Здравствуйте! Ввведите в чат город, чтобы получить инормацию о погоде на сегодня!");
+                    sendMsg(message, "Здравствуйте! 🤩 👋\nВвведите в чат город 🏙️, чтобы получить информацию о погоде на сегодня!\nВы можете подписаться 📥, указав город, по которому будет приходить прогноз. Также с подпиской можно получать автоматическую рассылку 📨.");
                     break;
                 case "/subscribe":
-                case "Подписаться на рассылку":
-                    if (!subscribes.containsKey(chatId)){
+                case "подписаться":
+                    if (!subscribes.containsKey(chatId)) {
                         subscribes.put(chatId, "Москва");
-                        sendMsg(message, "Отлично! Вы подписались на рассылку погоды. По умолчанию, информация о погоде по городу Москва. Вы сменить город, написав команду /settings. Вам будет приходить уведомление круглосуточно в 9:00 и в 20:00 по МСК");
+                        getForecast = (city) -> getWeatherCurrent(city);
+                        sendMsg(message, "Отлично! Вы подписались на рассылку погоды. По умолчанию, информация о погоде по городу Москва. Вы можете сменить город, нажав на кнопку \"Настройки\" или написав команду /settings.");
+                    } else {
+                        sendMsg(message, "Вы уже подписались на рассылку!");
                     }
-                    else {
-                        sendMsg(message, "Вы уже подписались на рассылку");
-                    }   break;
+                    break;
                 case "/unsubscribe":
-                case "Отписаться от рассылки":
+                case "отписаться":
                     if (subscribes.containsKey(chatId)) {
                         subscribes.remove(chatId);
+                        broadcast.remove(chatId);
                         sendMsg(message, "Вы отписались от рассылки погоды.");
-                    }
-                    else {
+                    } else {
                         sendMsg(message, "Вы не подписывались на рассылку!");
-                    }   break;
+                    }
+                    break;
+                case "текущая погода":
+                    setForecast(message, chatId, (String city) -> getWeatherCurrent(city));
+                    break;
+                case "получать рассылку":
+                    if (subscribes.containsKey(chatId)) {
+                        broadcast.add(chatId);
+                        sendMsg(message, "Отлично! Теперь Вам будет приходить уведомление о текущей погоде в 9:00 и в 20:00 по МСК каждый день.");
+                    } else {
+                        sendMsg(message, "Чтобы получать рассылку, нужно сначала подписаться.");
+                    }
+                    break;
+
+                case "отменить рассылку":
+                    if (broadcast.contains(chatId)) {
+                        broadcast.remove(chatId);
+                        sendMsg(message, "Вы отказались от рассылки. ");
+                    } else {
+                        sendMsg(message, "Вы не получаете рассылку.");
+                    }
+                    break;
+
+                case "погода на ближайшие 3 дня":
+                    setForecast(message, chatId, (String city) -> getWeather3Days(city));
+                    break;
+                case "погода на неделю":
+                    setForecast(message, chatId, (String city) -> getWeatherWeek(city));
+                    break;
                 default:
+                    String weather;
                     try {
+                        weather = getForecast.apply(text);
+                    } catch (Exception e) {
+                        getForecast = (city) -> getWeatherCurrent(city);
+                        weather = getForecast.apply(text);
+                    }
+                    if (!weather.equals("404")) {
                         if (isChangeSettings) {
-                            subscribes.put(message.getChatId().toString(), text);
-                            sendMsg(message, "Проверка...");
-                            sendMsg(message, getWeather(text));
+                            subscribes.put(chatId, text);
+                            sendMsg(message, "Город был успешно изменен.");
                             isChangeSettings = false;
                         }
-                    } catch (Exception e) {
-                        sendMsg(message, "К сожалению, мы не нашли такой город. Попробуйте еще раз!");
+                        else
+                            sendMsg(message, getForecast.apply(text));
                     }
+                    else
+                        sendMsg(message, "К сожалению, мы не нашли такой город. Попробуйте еще раз!");
             }
         }
     }
-    
+
+    private ReplyKeyboardMarkup createKeyboard(SendMessage sendMessage, boolean selective, boolean resize, boolean oneTime) {
+        ReplyKeyboardMarkup replyKeyboardMarkup = new ReplyKeyboardMarkup();
+        sendMessage.setReplyMarkup(replyKeyboardMarkup);
+        replyKeyboardMarkup.setSelective(selective);
+        replyKeyboardMarkup.setResizeKeyboard(resize);
+        replyKeyboardMarkup.setOneTimeKeyboard(oneTime);
+
+        sendMessage.setReplyMarkup(replyKeyboardMarkup);
+
+        return replyKeyboardMarkup;
+    }
+
+    private void addRow(ReplyKeyboardMarkup keyboardMarkup, String[] buttons) {
+        KeyboardRow keyboardRow = new KeyboardRow();
+        for (String button : buttons) {
+            KeyboardButton kb = new KeyboardButton();
+            kb.setText(button);
+            keyboardRow.add(kb);
+        }
+        keyboardMarkup.getKeyboard().add(keyboardRow);
+    }
+
+    private void addOneRowButtons(ReplyKeyboardMarkup keyboardMarkup, String[] buttons) {
+        for (String button : buttons) {
+            KeyboardRow keyboardRow = new KeyboardRow();
+            KeyboardButton kb = new KeyboardButton();
+            kb.setText(button);
+            keyboardRow.add(kb);
+            keyboardMarkup.getKeyboard().add(keyboardRow);
+        }
+    }
+
+    private KeyboardRow addRow(ReplyKeyboardMarkup keyboardMarkup) {
+        KeyboardRow keyboardRow = new KeyboardRow();
+        keyboardMarkup.getKeyboard().add(keyboardRow);
+        return keyboardRow;
+    }
+
+    private void setKeyboard(SendMessage sendMessage) {
+        String chatId = sendMessage.getChatId();
+
+        ReplyKeyboardMarkup replyKeyboardMarkup = createKeyboard(sendMessage, true, true, false);
+
+        String[] buttons = {"Текущая погода " + buttonIcons.get("current"),
+            "Погода на ближайшие 3 дня " + buttonIcons.get("3days"),
+            "Погода на неделю " + buttonIcons.get("week")};
+
+        addOneRowButtons(replyKeyboardMarkup, buttons);
+        KeyboardRow subscribe = addRow(replyKeyboardMarkup);
+        KeyboardButton subButton = new KeyboardButton();
+
+        if (!subscribes.containsKey(chatId)) {
+            subButton.setText("Подписаться " + buttonIcons.get("subscribe"));
+        } else {
+            KeyboardButton broadButton = new KeyboardButton();
+
+            if (!broadcast.contains(chatId)) {
+                subscribe.add(broadButton.setText("Получать рассылку " + buttonIcons.get("broadcast")));
+            } else {
+                subscribe.add(broadButton.setText("Отменить рассылку " + buttonIcons.get("cancel")));
+            }
+            subscribe.add(new KeyboardButton().setText("Настройки️ " + buttonIcons.get("settings")));
+
+            subButton.setText("Отписаться " + buttonIcons.get("unsubsribe"));
+        }
+        subscribe.add(subButton);
+    }
+
     public void setSettingsKeyboard(SendMessage sendMessage) {
         ReplyKeyboardMarkup replyKeyboardMarkup = new ReplyKeyboardMarkup();
         sendMessage.setReplyMarkup(replyKeyboardMarkup);
         replyKeyboardMarkup.setSelective(true);
         replyKeyboardMarkup.setResizeKeyboard(true);
         replyKeyboardMarkup.setOneTimeKeyboard(true);
-        
-        
+
         List<KeyboardRow> keyboardRowList = new ArrayList<>();
         KeyboardRow keyboardFirstRow = new KeyboardRow();
         KeyboardButton key = new KeyboardButton();
-        
-        key.setText("Сменить город");
-        
+
+        key.setText("Сменить город " + buttonIcons.get("city"));
+
         keyboardFirstRow.add(key);
         keyboardRowList.add(keyboardFirstRow);
         replyKeyboardMarkup.setKeyboard(keyboardRowList);
     }
-    
-    public void setKeyboardSubscribe(SendMessage sendMessage) {
-        ReplyKeyboardMarkup replyKeyboardMarkup = new ReplyKeyboardMarkup();
-        sendMessage.setReplyMarkup(replyKeyboardMarkup);
-        replyKeyboardMarkup.setSelective(true);
-        replyKeyboardMarkup.setResizeKeyboard(true);
-        replyKeyboardMarkup.setOneTimeKeyboard(true);
-        
-        List<KeyboardRow> keyboardRowList = new ArrayList<>();
-        KeyboardRow keyboardFirstRow = new KeyboardRow();
-        KeyboardButton key = new KeyboardButton();
-        
-        if (!subscribes.containsKey(sendMessage.getChatId()))
-            key.setText("Подписаться на рассылку");
-        else
-            key.setText("Отписаться от рассылки");
-        
-        keyboardFirstRow.add(key);
-        
-        keyboardRowList.add(keyboardFirstRow);
-        replyKeyboardMarkup.setKeyboard(keyboardRowList);
-        
-    }
-    
+
     public void broadcast() {
-        for (Map.Entry<String, String> subscribe : subscribes.entrySet()) {
-            sendMsg(subscribe.getKey(), getWeather(subscribe.getValue()));
+        for (String id : broadcast) {
+            sendMsg(id, buttonIcons.get("broadcast") + getWeatherCurrent(subscribes.get(id)));
         }
     }
-    
+
     @Override
     public String getBotUsername() {
         return "weather_uni_bot";
     }
-    
+
 }
