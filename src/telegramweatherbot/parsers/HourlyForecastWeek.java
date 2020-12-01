@@ -30,12 +30,14 @@ public class HourlyForecastWeek extends Forecast{
         JsonArray list = jsonObject.get("list").getAsJsonArray();
         
         StringBuilder sb = new StringBuilder();
+        
+        long timezone = jsonObject.get("city").getAsJsonObject().get("timezone").getAsLong();
         String country = jsonObject.get("city").getAsJsonObject().get("country").getAsString();
         sb.append(getFlag(country)).append(" ")
           .append('(').append(country).append(") ")
-          .append(city).append("\n");
+          .append(city).append(' ')
+          .append(getUtc(timezone)).append('\n');
         
-        long timeZone = jsonObject.get("city").getAsJsonObject().get("timezone").getAsLong();
         SimpleDateFormat formaterDay = new SimpleDateFormat("dd-MMMM, EEEE", Locale.US);
         SimpleDateFormat formaterTime = new SimpleDateFormat("HH:mm", Locale.US);
         
@@ -51,7 +53,7 @@ public class HourlyForecastWeek extends Forecast{
             String w = jo.get("weather").getAsJsonArray().get(0).getAsJsonObject().get("main").getAsString();
             long dt = jo.get("dt").getAsLong();
 
-            Date date = NormalizedDate.getNormalizedDate(dt, timeZone);
+            Date date = NormalizedDate.getNormalizedDate(dt, timezone);
 
             int dN = date.getDate();
             
@@ -65,9 +67,11 @@ public class HourlyForecastWeek extends Forecast{
                     
             }
             
-            sb.append(formaterTime.format(date)).append(" ")
-              .append(t).append(" ")
-              .append(w).append(" ").append(WeatherUtils.weatherIconsCodes.get(w)).append("\n");
+            sb.append(getIconTime(date.getHours())).append(' ')
+              .append(formaterTime.format(date)).append(' ')
+              .append(WeatherUtils.weatherIconsCodes.get("Temperature")).append(' ')
+              .append(t).append(' ')
+              .append(w).append(' ').append(WeatherUtils.weatherIconsCodes.get(w)).append("\n");
         }
         return sb.toString();
         

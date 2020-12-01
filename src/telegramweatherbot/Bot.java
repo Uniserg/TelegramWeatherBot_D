@@ -140,7 +140,7 @@ public class Bot extends TelegramLongPollingBot {
         sendMessage.setChatId(message.getChatId());
         sendMessage.setReplyToMessageId(message.getMessageId());
         sendMessage.setText(text);
-
+ 
         try {
             setSettingsKeyboard(sendMessage);
             execute(sendMessage);

@@ -35,29 +35,22 @@ public class CurrentWeather extends Forecast{
         long dt = jo.get("dt").getAsLong();
         long timizone = jo.get("timezone").getAsLong();
         
+        
+        String utc = getUtc(timizone); //to sb
         Date date = NormalizedDate.getNormalizedDate(dt, timizone);
         
         SimpleDateFormat formater = new SimpleDateFormat("EEEE, dd MMMM HH:mm YYYY", Locale.US);
         String fdate = formater.format(date); // to sb
         
         int hours = date.getHours();
-            
-        String iconTime;
-        if (5 < hours && hours < 10)
-            iconTime = "Morning";
-        else if (10 <= hours && hours < 18)
-            iconTime = "Noon";
-        else if (18 <= hours && hours < 21)
-            iconTime = "Evening";
-        else
-            iconTime = "Night";
         
         StringBuilder sb = new StringBuilder();
         sb.append(getFlag(country)).append(" ")
           .append('(').append(country).append(") ")
           .append(city).append('\n')
-          .append(WeatherUtils.weatherIconsCodes.get(iconTime)).append(' ')
-          .append(fdate).append('\n');
+          .append(getIconTime(hours)).append(' ')
+          .append(fdate)
+          .append(" ").append(utc).append('\n');
         
         sb.append("Temperature: ").append(getFormatTemp(main.get("temp").getAsDouble())).append(' ')
           .append(WeatherUtils.weatherIconsCodes.get("Temperature")).append('\n')

@@ -13,7 +13,7 @@ public class WeatherUtils {
         weatherIconsCodes.put("Snow", "❄");
         weatherIconsCodes.put("Clouds", "☁");
         weatherIconsCodes.put("Mist", "🌁️");
-        weatherIconsCodes.put("Morning", "🌌");
+        weatherIconsCodes.put("Morning", "🌇");
         weatherIconsCodes.put("Noon", "🏙");
         weatherIconsCodes.put("Evening", "🌆");
         weatherIconsCodes.put("Night", "🌌");
