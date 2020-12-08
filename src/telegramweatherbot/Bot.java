@@ -58,7 +58,7 @@ public class Bot extends TelegramLongPollingBot {
         timer.schedule(new TimerTask() {
             @Override
             public void run() {
-                    broadcast();
+                broadcast();
             }
         }, c1.getTime(), 30000);
     }
@@ -67,7 +67,7 @@ public class Bot extends TelegramLongPollingBot {
         timer.schedule(new TimerTask() {
             @Override
             public void run() {
-                    broadcast();
+                broadcast();
             }
         }, c2.getTime(), 86400000);
     }
@@ -140,7 +140,7 @@ public class Bot extends TelegramLongPollingBot {
         sendMessage.setChatId(message.getChatId());
         sendMessage.setReplyToMessageId(message.getMessageId());
         sendMessage.setText(text);
- 
+
         try {
             setSettingsKeyboard(sendMessage);
             execute(sendMessage);
@@ -162,7 +162,8 @@ public class Bot extends TelegramLongPollingBot {
         }
     }
 
-    private void setForecast(Message message, String chatId, Function<String, String> forecast) {
+    private void setForecast(Message message, Function<String, String> forecast) {
+        String chatId = message.getChatId().toString();
         if (!subscribes.containsKey(chatId)) {
             sendMsg(message, "Укажите город.");
             getForecast = forecast;
@@ -195,8 +196,7 @@ public class Bot extends TelegramLongPollingBot {
                     if (subscribes.containsKey(chatId)) {
                         sendMsg(message, "Укажите город.");
                         isChangeSettings = true;
-                    }
-                    else {
+                    } else {
                         sendMsg(message, "Вы не подписаны!");
                     }
                     break;
@@ -224,7 +224,7 @@ public class Bot extends TelegramLongPollingBot {
                     }
                     break;
                 case "текущая погода":
-                    setForecast(message, chatId, (String city) -> getWeatherCurrent(city));
+                    setForecast(message, (String city) -> getWeatherCurrent(city));
                     break;
                 case "получать рассылку":
                     if (subscribes.containsKey(chatId)) {
@@ -245,16 +245,16 @@ public class Bot extends TelegramLongPollingBot {
                     break;
 
                 case "погода на ближайшие 3 дня":
-                    setForecast(message, chatId, (String city) -> getWeather3Days(city));
+                    setForecast(message, (String city) -> getWeather3Days(city));
                     break;
                 case "погода на неделю":
-                    setForecast(message, chatId, (String city) -> getWeatherWeek(city));
+                    setForecast(message, (String city) -> getWeatherWeek(city));
                     break;
                 default:
                     String weather;
-                    try {
+                    if (getForecast != null) {
                         weather = getForecast.apply(text);
-                    } catch (Exception e) {
+                    } else {
                         getForecast = (city) -> getWeatherCurrent(city);
                         weather = getForecast.apply(text);
                     }
@@ -263,12 +263,12 @@ public class Bot extends TelegramLongPollingBot {
                             subscribes.put(chatId, text);
                             sendMsg(message, "Город был успешно изменен.");
                             isChangeSettings = false;
-                        }
-                        else
+                        } else {
                             sendMsg(message, getForecast.apply(text));
-                    }
-                    else
+                        }
+                    } else {
                         sendMsg(message, "К сожалению, мы не нашли такой город. Попробуйте еще раз!");
+                    }
             }
         }
     }
@@ -360,9 +360,9 @@ public class Bot extends TelegramLongPollingBot {
     }
 
     public void broadcast() {
-        for (String id : broadcast) {
+        broadcast.forEach(id -> {
             sendMsg(id, buttonIcons.get("broadcast") + getWeatherCurrent(subscribes.get(id)));
-        }
+        });
     }
 
     @Override
