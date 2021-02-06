@@ -60,7 +60,7 @@ public class Bot extends TelegramLongPollingBot {
             public void run() {
                 broadcast();
             }
-        }, c1.getTime(), 30000);
+        }, c1.getTime(), 86400000);
     }
 
     public void sendOn20() {
@@ -95,8 +95,8 @@ public class Bot extends TelegramLongPollingBot {
         c2 = Calendar.getInstance();
         timer = new Timer();
 
-        c1.set(Calendar.HOUR_OF_DAY, 0);
-        c1.set(Calendar.MINUTE, 44);
+        c1.set(Calendar.HOUR_OF_DAY, 9);
+        c1.set(Calendar.MINUTE, 26);
         c1.set(Calendar.SECOND, 00);
 
         c2.set(Calendar.HOUR_OF_DAY, 20);
@@ -235,25 +235,26 @@ public class Bot extends TelegramLongPollingBot {
                 }
                 case "погода на ближайшие 3 дня" -> setForecast(message, (String city) -> getWeather3Days(city));
                 case "погода на неделю" -> setForecast(message, (String city) -> getWeatherWeek(city));
-default ->      {
-    String weather;
-    if (getForecast != null) {
-        weather = getForecast.apply(text);
-    } else {
-        getForecast = (city) -> getWeatherCurrent(city);
-        weather = getForecast.apply(text);
-    }
-    if (!weather.equals("404")) {
-        if (isChangeSettings) {
-            subscribes.put(chatId, text);
-            sendMsg(message, "Город был успешно изменен.");
-            isChangeSettings = false;
-        } else {
-            sendMsg(message, getForecast.apply(text));
-        }
-    } else {
-        sendMsg(message, "К сожалению, мы не нашли такой город. Попробуйте еще раз!");
-    }
+                
+                default -> {
+                    String weather;
+                    if (getForecast != null) {
+                        weather = getForecast.apply(text);
+                    } else {
+                        getForecast = (city) -> getWeatherCurrent(city);
+                        weather = getForecast.apply(text);
+                    }
+                    if (!weather.equals("404")) {
+                        if (isChangeSettings) {
+                            subscribes.put(chatId, text);
+                            sendMsg(message, "Город был успешно изменен.");
+                            isChangeSettings = false;
+                        } else {
+                            sendMsg(message, getForecast.apply(text));
+                        }
+                    } else {
+                        sendMsg(message, "К сожалению, мы не нашли такой город. Попробуйте еще раз!");
+                    }
                 }
             }
         }
